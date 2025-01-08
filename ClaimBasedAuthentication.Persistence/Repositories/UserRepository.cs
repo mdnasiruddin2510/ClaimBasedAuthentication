@@ -8,6 +8,7 @@ using ClaimBasedAuthentication.Persistence.Context;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -130,6 +131,16 @@ namespace ClaimBasedAuthentication.Persistence.Repositories
             }
 
             return res.ToString();
+        }
+        public async Task<List<VmSelectListItem>> GetDrpRole()
+        {
+            return await _db.Roles
+                            .Where(x => x.Name.ToLower() != "superadmin")
+                            .Select(s => new VmSelectListItem
+                            {
+                                Text = s.Name,
+                                Value = s.Id.ToString()
+                            }).ToListAsync();
         }
     }
 }

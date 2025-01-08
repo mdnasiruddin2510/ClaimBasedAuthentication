@@ -142,6 +142,7 @@ namespace ClaimBasedAuthentication.Persistence.Services
                 }
             }
             ApplicationUser SuperAdmin = await _userManager.FindByNameAsync("admin");
+            ApplicationUser GeneralUser = await _userManager.FindByNameAsync("nasir");
             if (SuperAdmin == null)
             {
                 SuperAdmin = new ApplicationUser()
@@ -156,9 +157,25 @@ namespace ClaimBasedAuthentication.Persistence.Services
                     IsActive = true,
                 };
                 var result = await _userManager.CreateAsync(SuperAdmin, "123456");
+            }
 
+            if (GeneralUser == null)
+            {
+                GeneralUser  = new ApplicationUser()
+                {
+                    UserName = "nasir",
+                    Email = "md.nasiruddin2510@gmail.com",
+                    FullName = "Md. Nasir Uddin",
+                    EmailConfirmed = true,
+                    PhoneNumberConfirmed = true,
+                    NormalizedEmail = "md.nasiruddin2510@gmail.com",
+                    NormalizedUserName = "NASIR",
+                    IsActive = true,
+                };
+                var result = await _userManager.CreateAsync(GeneralUser, "123456");
             }
             await _userManager.AddToRoleAsync(SuperAdmin, "Admin");
+            await _userManager.AddToRoleAsync(GeneralUser, "General");
         }
     }
 }

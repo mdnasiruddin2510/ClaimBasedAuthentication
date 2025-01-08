@@ -11,5 +11,6 @@ namespace ClaimBasedAuthentication.Application.IRepository
     public interface IUserRepository
     {
         Task<AuthenticationResponse> Login(AuthenticationRequest request);
+        Task<List<VmSelectListItem>> GetDrpRole();
     }
 }

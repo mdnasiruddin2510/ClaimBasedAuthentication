@@ -3,3 +3,4 @@
 
 // Write your JavaScript code.
 var baseURL = 'https://localhost:44302';
+var token = sessionStorage.getItem('Token');
