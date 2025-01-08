@@ -1,0 +1,224 @@
+﻿@{
+    ViewData["Title"] = "Role Permission";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Permission List</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="roleId">Role</label>
+                            <div class="input-group">
+                                <select id="roleId" name="roleId" class="select2"></select>
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary" id="btnSearch" type="button"><i class="fas fa-search"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <label for="roleId"></label>
+                        <div class="form-group">
+                            <button class="btn btn-primary" id="btnSave" type="button"><i class="fas fa-save"></i></button>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <table id="tblClaim" class="table table-hover table-borderless">
+                            <thead>
+                                <tr>
+                                    <th style="width:5%;">SL</th>
+                                    <th>Name</th>
+                                    <th>Claim</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script type="text/javascript">
+        function getRoles() {
+            $.ajax({
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                url: baseURL + '/api/dropDown/getRole',
+                dataType: "json",
+                type: 'get',
+                success: function (res) {
+                    $("#roleId").empty();
+                    let option = ``;
+                    $.each(res, function (key, val) {
+                        option += `<option value="${val.value}">${val.text}</option>`;
+                    });
+                    $("#roleId").append(option);
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.log(textStatus, errorThrown);
+                }
+            })
+        }
+
+        $(document).on("change", "#all", function () {
+            if (this.checked) {
+                $(".groupCheckbox").prop("checked", true);
+                $(".claimCheckbox").prop("checked", true);
+            }
+            else {
+                $(".groupCheckbox").prop("checked", false);
+                $(".claimCheckbox").prop("checked", false);
+            }
+
+        });
+
+        $(document).on("change", ".groupCheckbox", function () {
+            var parentCheckboxLength = $(".groupCheckbox").length;
+            var checkedParentCheckboxLength = $(".groupCheckbox:checked").length;
+            if (parentCheckboxLength == checkedParentCheckboxLength) {
+                $("#all").prop("checked", true);
+            }
+            else {
+                $("#all").prop("checked", false);
+            }
+            if (this.checked) {
+                $("." + this.id).prop("checked", true);
+            }
+            else {
+                $("." + this.id).prop("checked", false);
+            }
+        });
+        $(document).on("change", ".claimCheckbox", function () {
+            var parentCheckboxLength = $(".groupCheckbox").length;
+            var checkedParentCheckboxLength = $(".groupCheckbox:checked").length;
+            if (parentCheckboxLength == checkedParentCheckboxLength) {
+                $("#all").prop("checked", true);
+            }
+            else {
+                $("#all").prop("checked", false);
+            }
+            var id = this.className.substring(14);
+            var numberOfChildCheckBoxes = $('.' + id).length;
+            var checkedChildCheckBox = $('.' + id + ':checked').length;
+
+            if (checkedChildCheckBox == numberOfChildCheckBoxes) {
+                $("#" + id).prop("checked", true);
+            }
+            else {
+                $("#" + id).prop("checked", false);
+            }
+        });
+
+
+        function getAllClaims() {
+            var num = 0;
+            let n = 1000;
+            $.ajax({
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                url: baseURL + '/api/account/GetAllClaims',
+                dataType: "json",
+                type: 'get',
+                data: { roleId: $("#roleId").val() },
+                success: function (res) {
+                    let allCheckBox_Checked = "";
+
+                    if (res.allCheckbox) {
+                        allCheckBox_Checked = "checked";
+                    }
+                    //if (res.vmClaimItemList.length > 0) {
+                    //    $("#btnSave").prop("disabled", false);
+                    //} else {
+                    //    $("#btnSave").prop("disabled", true);
+                    //}
+
+                    $("#tblClaim tbody").empty();
+                    let content = `<tr><td colspan="3"><input type="checkbox" id="all"  ${allCheckBox_Checked}> <label for="all"> All</label></td></tr>`;
+                    $.each(res.aplicationCalimList, (key, app) => {
+                        $("#btnSave").prop("disabled", false);
+                        content += `<tr style="border: solid 1px; background-color: aliceblue;"><td colspan="3" style="text-align: center;"><label style="font-size: 16px;">${app.appName}</label></td></tr>`;
+                        $.each(app.claimItems, function (ke, val) {
+                            let groupCheckBox_Checked = "";
+                            if (val.groupCheckbox) {
+                                groupCheckBox_Checked = "checked";
+                            }
+                            content += `<tr>
+                                                    <td>${++num}.</td>
+                                                    <td colspan="2"><input type="checkbox" id="${num}" class="groupCheckbox" ${groupCheckBox_Checked}> <label for="${num}"> ${val.controllerName}</label> </td>
+                                                </tr>`;
+                            let subContent = ``;
+
+                            $.each(val.claims, function (k, v) {
+                                ++n;
+                                let claimCheckBox_Checked = "";
+                                if (v.selected) {
+                                    claimCheckBox_Checked = "checked";
+                                }
+                                subContent += `<tr>
+                                                            <td></td>
+                                                            <td></td>
+                                                            <td><input type="checkbox" id="${n}" class="claimCheckbox ${num}" data-id="${v.value}" ${claimCheckBox_Checked}><label for="${n}"> ${v.text}</label> </td>
+                                                        </tr>`;
+                            });
+                            content += subContent;
+                        });
+                    });
+                    $("#tblClaim tbody").append(content);
+                },
+                error: function (request, status, error) {
+
+                }
+            });
+        }
+        $("#btnSearch").click(function () {
+            getAllClaims();
+        });
+
+        $("#btnSave").click(function () {
+            var claimList = [];
+            $("#btnSave").prop("disabled", true);
+            $.each($(".claimCheckbox:checked"), function (key, val) {
+                var value = $(this).data('id');
+                claimList.push(value);
+            });
+            var data = {
+                roleId: $("#roleId").val(),
+                claims: claimList
+            };
+
+            $.ajax({
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                url: baseURL + '/api/account/saveClaims',
+                type: 'post',
+                data: JSON.stringify(data),
+                success: function (res) {
+                    toastr.success("Update successfully!", "Success");
+                }
+            })
+        });
+
+        $(document).ready(function () {
+            getRoles();
+        })
+    </script>
+}
