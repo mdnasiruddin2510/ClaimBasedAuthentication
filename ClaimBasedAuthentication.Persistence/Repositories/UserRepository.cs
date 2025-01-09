@@ -4,6 +4,7 @@ using ClaimBasedAuthentication.Application.ViewModel;
 using ClaimBasedAuthentication.Domain.Common;
 using ClaimBasedAuthentication.Domain.Entities;
 using ClaimBasedAuthentication.Domain.Services.Authentication;
+using ClaimBasedAuthentication.Domain.Services.Claims;
 using ClaimBasedAuthentication.Persistence.Context;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -135,12 +136,33 @@ namespace ClaimBasedAuthentication.Persistence.Repositories
         public async Task<List<VmSelectListItem>> GetDrpRole()
         {
             return await _db.Roles
-                            .Where(x => x.Name.ToLower() != "superadmin")
                             .Select(s => new VmSelectListItem
                             {
                                 Text = s.Name,
                                 Value = s.Id.ToString()
                             }).ToListAsync();
+        }
+        public async Task<VmClaimGrid> GetAllClaimsAsync(string roleId, string currentRole)
+        {
+            var claimGrid = new VmClaimGrid();
+            var role = await _roleManager.FindByIdAsync(roleId);
+            var roleClaim = await _roleManager.GetClaimsAsync(role);
+            var currentUserRole = await _roleManager.FindByNameAsync(currentRole);
+            var currrentUserRoleClaim = await _roleManager.GetClaimsAsync(currentUserRole);
+            var claimList = currentUserRole.Name switch
+            {
+                "SuperAdmin" => ClaimHelper.GetPermissionList(),
+                _ => currrentUserRoleClaim.GetPermissionListOfAdmin(),
+            };
+            claimList = claimList.SetGivenPermissionInClaimList(roleClaim);
+            claimGrid.AplicationCalimList = claimList.ConvertClaimSelectListItemToClaimItem();
+            claimGrid.RoleId = role.Id;
+            claimGrid.RoleName = role.Name;
+            if (claimGrid.AplicationCalimList.All(a => a.ClaimItems.All(c => c.GroupCheckbox)))
+            {
+                claimGrid.AllCheckbox = true;
+            }
+            return claimGrid;
         }
     }
 }

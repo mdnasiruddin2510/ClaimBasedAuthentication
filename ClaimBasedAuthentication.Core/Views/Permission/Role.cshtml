@@ -2,6 +2,7 @@
     ViewData["Title"] = "Role Permission";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet"/>
 <div class="row">
     <div class="col-md-8">
         <div class="card">
@@ -16,7 +17,7 @@
                             <div class="input-group">
                                 <select id="roleId" name="roleId" class="select2"></select>
                                 <div class="input-group-append">
-                                    <button class="btn btn-primary" id="btnSearch" type="button"><i class="fas fa-search"></i></button>
+                                    <button class="btn btn-primary" id="btnSearch" type="button"><i class="fa fa-search"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -24,7 +25,7 @@
                     <div class="col-md-1">
                         <label for="roleId"></label>
                         <div class="form-group">
-                            <button class="btn btn-primary" id="btnSave" type="button"><i class="fas fa-save"></i></button>
+                            <button class="btn btn-primary" id="btnSave" type="button"><i class="fa fa-save"></i></button>
                         </div>
 
                     </div>
@@ -159,9 +160,9 @@
                                 groupCheckBox_Checked = "checked";
                             }
                             content += `<tr>
-                                                    <td>${++num}.</td>
-                                                    <td colspan="2"><input type="checkbox" id="${num}" class="groupCheckbox" ${groupCheckBox_Checked}> <label for="${num}"> ${val.controllerName}</label> </td>
-                                                </tr>`;
+                                            <td>${++num}.</td>
+                                            <td colspan="2"><input type="checkbox" id="${num}" class="groupCheckbox" ${groupCheckBox_Checked}> <label for="${num}"> ${val.controllerName}</label> </td>
+                                        </tr>`;
                             let subContent = ``;
 
                             $.each(val.claims, function (k, v) {
@@ -171,10 +172,10 @@
                                     claimCheckBox_Checked = "checked";
                                 }
                                 subContent += `<tr>
-                                                            <td></td>
-                                                            <td></td>
-                                                            <td><input type="checkbox" id="${n}" class="claimCheckbox ${num}" data-id="${v.value}" ${claimCheckBox_Checked}><label for="${n}"> ${v.text}</label> </td>
-                                                        </tr>`;
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td><input type="checkbox" id="${n}" class="claimCheckbox ${num}" data-id="${v.value}" ${claimCheckBox_Checked}><label for="${n}"> ${v.text}</label> </td>
+                                                </tr>`;
                             });
                             content += subContent;
                         });
@@ -186,6 +187,7 @@
                 }
             });
         }
+       
         $("#btnSearch").click(function () {
             getAllClaims();
         });

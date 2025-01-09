@@ -2,6 +2,7 @@
 using ClaimBasedAuthentication.Application.ViewModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ClaimBasedAuthentication.Controllers
 {
@@ -16,10 +17,18 @@ namespace ClaimBasedAuthentication.Controllers
         }
         [Route("GetRole")]
         [HttpGet]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<ActionResult<List<VmSelectList>>> GetRole()
         {
             return Ok(await _userRepository.GetDrpRole());
+        }
+        [Route("GetAllClaims")]
+        [HttpGet]
+        public async Task<ActionResult<VmRoleClaim>> GetAllClaims(string roleId)
+        {
+            var currentUserRole = HttpContext.User.FindFirstValue(ClaimTypes.Role);
+            var claims = await _userRepository.GetAllClaimsAsync(roleId, currentUserRole);
+            return Ok(claims);
         }
     }
 }
