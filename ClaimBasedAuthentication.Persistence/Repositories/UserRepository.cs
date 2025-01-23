@@ -56,6 +56,7 @@ namespace ClaimBasedAuthentication.Persistence.Repositories
                 throw new ApiException($"Your account is currently inactive {request.Username}.");
             }
             JwtSecurityToken jwtSecurityToken = await GenerateJWToken(user);
+            
             AuthenticationResponse response = new()
             {
                 Id = user.Id,
@@ -72,7 +73,18 @@ namespace ClaimBasedAuthentication.Persistence.Repositories
             {
                 role.Name
             };
-
+            var claims = new[] //if Claim
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim("uid", user.Id),
+                new Claim("username", user.UserName),
+                new Claim("fullname", user.FullName),
+                new Claim("avatar", user.AvartarUrl??""),
+                new Claim("roles", role.Name),
+            };
+            response.ClaimList = claims;
             var refreshToken = GenerateRefreshToken();
             response.RefreshToken = refreshToken.Token;
             return response;
@@ -151,7 +163,7 @@ namespace ClaimBasedAuthentication.Persistence.Repositories
             var currrentUserRoleClaim = await _roleManager.GetClaimsAsync(currentUserRole);
             var claimList = currentUserRole.Name switch
             {
-                "SuperAdmin" => ClaimHelper.GetPermissionList(),
+                "Admin" => ClaimHelper.GetPermissionList(),
                 _ => currrentUserRoleClaim.GetPermissionListOfAdmin(),
             };
             claimList = claimList.SetGivenPermissionInClaimList(roleClaim);

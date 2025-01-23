@@ -8,6 +8,7 @@ namespace ClaimBasedAuthentication.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AccountController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
@@ -17,7 +18,7 @@ namespace ClaimBasedAuthentication.Controllers
         }
         [Route("GetRole")]
         [HttpGet]
-        [AllowAnonymous]
+        //[AllowAnonymous]
         public async Task<ActionResult<List<VmSelectList>>> GetRole()
         {
             return Ok(await _userRepository.GetDrpRole());

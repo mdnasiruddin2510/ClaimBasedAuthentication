@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.CreateAdministrator();
+//builder.Services.CreateGeneralUser();
 
 builder.Services.AddCors(options =>
 {

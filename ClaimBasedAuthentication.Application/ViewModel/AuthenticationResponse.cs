@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -18,5 +19,7 @@ namespace ClaimBasedAuthentication.Application.ViewModel
         [JsonIgnore]
         public string RefreshToken { get; set; }
         public string UserAvatar { get; set; }
+        public Claim[] ClaimList { get; set; }
     }
+    
 }

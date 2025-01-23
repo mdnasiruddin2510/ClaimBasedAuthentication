@@ -1,4 +1,5 @@
 ﻿using ClaimBasedAuthentication.Domain.Entities;
+using ClaimBasedAuthentication.Domain.Services.Claims;
 using ClaimBasedAuthentication.Persistence.Context;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
@@ -52,76 +54,50 @@ namespace ClaimBasedAuthentication.Persistence.Services
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(options =>
+            .AddJwtBearer(o =>
             {
-                options.SaveToken = true;
-                options.RequireHttpsMetadata = false;
-                options.TokenValidationParameters = new TokenValidationParameters()
+                var auth = configuration.GetSection("Auth");
+                o.Authority = auth["Authority"];
+                o.Audience = auth["Audience"];
+                o.RequireHttpsMetadata = false;
+                o.SaveToken = true;
+                o.TokenValidationParameters = new TokenValidationParameters
                 {
+                    //ValidateAudience = true,
+                    //ValidateIssuer = true,
+                    //ValidateIssuerSigningKey = true,
+                    //IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(auth["Secret"])),
+                    //ClockSkew = TimeSpan.Zero
+
                     RequireExpirationTime = false,
                     ClockSkew = TimeSpan.Zero,
                     ValidateLifetime = true,
                     ValidateIssuer = true,
                     ValidateAudience = true,
-                    ValidAudience = configuration["JwtSettings:Audience"],
-                    ValidIssuer = configuration["JwtSettings:Issuer"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]))
+                    ValidAudience = auth["Audience"],
+                    ValidIssuer = auth["Authority"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(auth["Secret"]))
+
                 };
-                options.Events = new JwtBearerEvents()
+            });
+            services.AddAuthorization(authOption =>
+            {
+                authOption.AddPolicy("ApiScope", builder =>
                 {
-                    OnTokenValidated = async (context) =>
-                    {
-                        var principal = context.Principal;
-                        if (principal != null)
-                        {
-                            var identity = principal.Identity;
-                            if (identity != null)
-                            {
-                                var name = identity.Name;
-                                var path = context.HttpContext.Request.Path.Value;
-                                var memCache = context.HttpContext.RequestServices.GetService<IMemoryCache>();
-                                if (path != null && path.ToLower().Contains("logout"))
-                                {
-                                    if (memCache != null)
-                                        memCache.Remove(name);
-                                }
-                                else
-                                {
-                                    if (memCache == null && name != null)
-                                    {
-                                        var _userManager = services.BuildServiceProvider().GetRequiredService<UserManager<ApplicationUser>>();
-                                        var user = await _userManager.FindByNameAsync(name);
-                                        var authClaims = new List<Claim>
-                                        {
-                                            new Claim(ClaimTypes.Name, user!.UserName!),
-                                            new Claim("UserId", user.Id.ToString()),
-                                            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                                            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                                        };
-                                        var authAdd = new ClaimsIdentity();
-                                        authAdd.AddClaims(authClaims);
-                                        context.HttpContext.User.AddIdentity(authAdd);
-                                        //mem cache
-                                        var cacheExpiryOptions = new MemoryCacheEntryOptions
-                                        {
-                                            AbsoluteExpiration = DateTime.Now.AddDays(300),
-                                            Priority = CacheItemPriority.High,
-                                            SlidingExpiration = TimeSpan.FromDays(200)
-                                        };
-                                        memCache.Set(name, authClaims, cacheExpiryOptions);
-                                    }
-                                    else if (memCache != null && name != null)
-                                    {
-                                        var authClaims = memCache.Get<List<Claim>>(name);
-                                        var authAdd = new ClaimsIdentity();
-                                        authAdd.AddClaims(authClaims);
-                                        context.HttpContext.User.AddIdentity(authAdd);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                };
+                    builder.RequireAuthenticatedUser()
+                           .RequireClaim("scope", "https://pronali.net");
+                });
+            });
+            services.AddCors(o =>
+            {
+                o.AddPolicy("AllowAllOrigin", builder =>
+                {
+                    builder
+                    .AllowAnyOrigin()
+                    .SetIsOriginAllowedToAllowWildcardSubdomains()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+                });
             });
             //services.AddSession(options =>
             //{
@@ -132,17 +108,36 @@ namespace ClaimBasedAuthentication.Persistence.Services
         {
             var _userManager = services.BuildServiceProvider().GetRequiredService<UserManager<ApplicationUser>>();
             var _roleManager = services.BuildServiceProvider().GetRequiredService<RoleManager<IdentityRole>>();
+            var _db = services.BuildServiceProvider().GetRequiredService<ApplicationDbContext>();
             string[] roleNames = { "Admin", "General"};
+            var role = new IdentityRole();
             foreach (var roleName in roleNames)
             {
-                var roleExist = await _roleManager.RoleExistsAsync(roleName);
-                if (!roleExist)
+                //var roleExist = await _roleManager.RoleExistsAsync(roleName);
+                //if (!roleExist)
+                //{
+                //    await _roleManager.CreateAsync(new IdentityRole(roleName));
+                //}
+
+                var roleExist = await _db.Roles.FirstOrDefaultAsync(x => x.Name.Equals(roleName));
+                if (roleExist is null)
                 {
-                    await _roleManager.CreateAsync(new IdentityRole(roleName));
+                    var newRole = new IdentityRole(roleName);
+                    newRole.NormalizedName = roleName.ToUpper();
+                    newRole.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+                    await _db.Roles.AddAsync(newRole);
+                    if (newRole.Name is "Admin")
+                    {
+                        role = newRole;
+                    }
                 }
+                else if (roleExist.Name is "Admin")
+                {
+                    role = roleExist;
+                }
+
             }
             ApplicationUser SuperAdmin = await _userManager.FindByNameAsync("admin");
-            ApplicationUser GeneralUser = await _userManager.FindByNameAsync("nasir");
             if (SuperAdmin == null)
             {
                 SuperAdmin = new ApplicationUser()
@@ -159,9 +154,60 @@ namespace ClaimBasedAuthentication.Persistence.Services
                 var result = await _userManager.CreateAsync(SuperAdmin, "123456");
             }
 
+            var userRoleEsixt = await _db.UserRoles.FirstOrDefaultAsync(x => x.UserId.Equals(SuperAdmin.Id) && x.RoleId == role.Id);
+            if (userRoleEsixt is null)
+            {
+                var userRole = new IdentityUserRole<string>
+                {
+                    UserId = SuperAdmin.Id,
+                    RoleId = role.Id,
+                };
+                await _db.UserRoles.AddAsync(userRole);
+                _db.SaveChanges();
+            }
+
+            //await _userManager.AddToRoleAsync(SuperAdmin, "Admin");
+            //await _userManager.AddToRoleAsync(GeneralUser, "General");
+            await AddPermissionToRoleAsync(role, _db);
+        }
+        public static async void CreateGeneralUser(this IServiceCollection services)
+        {
+            var _userManager = services.BuildServiceProvider().GetRequiredService<UserManager<ApplicationUser>>();
+            var _roleManager = services.BuildServiceProvider().GetRequiredService<RoleManager<IdentityRole>>();
+            var _db = services.BuildServiceProvider().GetRequiredService<ApplicationDbContext>();
+            string[] roleNames = { "General" };
+            var role = new IdentityRole();
+            foreach (var roleName in roleNames)
+            {
+                //var roleExist = await _roleManager.RoleExistsAsync(roleName);
+                //if (!roleExist)
+                //{
+                //    await _roleManager.CreateAsync(new IdentityRole(roleName));
+                //}
+
+                var roleExist = await _db.Roles.FirstOrDefaultAsync(x => x.Name.Equals(roleName));
+                if (roleExist is null)
+                {
+                    var newRole = new IdentityRole(roleName);
+                    newRole.NormalizedName = roleName.ToUpper();
+                    newRole.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+                    await _db.Roles.AddAsync(newRole);
+                    if (newRole.Name is "General")
+                    {
+                        role = newRole;
+                    }
+                }
+                else if (roleExist.Name is "Admin")
+                {
+                    role = roleExist;
+                }
+
+            }
+            ApplicationUser GeneralUser = await _userManager.FindByNameAsync("nasir");
+
             if (GeneralUser == null)
             {
-                GeneralUser  = new ApplicationUser()
+                GeneralUser = new ApplicationUser()
                 {
                     UserName = "nasir",
                     Email = "md.nasiruddin2510@gmail.com",
@@ -174,8 +220,48 @@ namespace ClaimBasedAuthentication.Persistence.Services
                 };
                 var result = await _userManager.CreateAsync(GeneralUser, "123456");
             }
-            await _userManager.AddToRoleAsync(SuperAdmin, "Admin");
-            await _userManager.AddToRoleAsync(GeneralUser, "General");
+
+            var userRoleEsixt = await _db.UserRoles.FirstOrDefaultAsync(x => x.UserId.Equals(GeneralUser.Id) && x.RoleId == role.Id);
+            if (userRoleEsixt is null)
+            {
+                var userRole = new IdentityUserRole<string>
+                {
+                    UserId = GeneralUser.Id,
+                    RoleId = role.Id,
+                };
+                await _db.UserRoles.AddAsync(userRole);
+                _db.SaveChanges();
+            }
+
+            //await _userManager.AddToRoleAsync(SuperAdmin, "Admin");
+            //await _userManager.AddToRoleAsync(GeneralUser, "General");
+            await AddPermissionToRoleAsync(role, _db);
+        }
+        static async Task AddPermissionToRoleAsync(IdentityRole role, ApplicationDbContext _db)
+        {
+            var permittedClaimList = await _db.RoleClaims.Where(x => x.RoleId.Equals(role.Id)).ToListAsync();
+            var claimList = ClaimHelper.GetAllClaimList();
+            var identityRoleClaims = new List<IdentityRoleClaim<string>>();
+            foreach (var claim in claimList)
+            {
+                if (!permittedClaimList.Any(x => x.ClaimType.Equals(claim.Value)))
+                {
+                    var cl = new Claim(claim.Value, role.Id);
+                    var roleClaim = new IdentityRoleClaim<string>
+                    {
+                        RoleId = role.Id,
+                        ClaimType = claim.Value,
+                        ClaimValue = role.Id,
+                    };
+                    roleClaim.ToClaim();
+                    identityRoleClaims.Add(roleClaim);
+                }
+            }
+            if (identityRoleClaims.Count > 0)
+            {
+                await _db.RoleClaims.AddRangeAsync(identityRoleClaims);
+                await _db.SaveChangesAsync();
+            }
         }
     }
 }
