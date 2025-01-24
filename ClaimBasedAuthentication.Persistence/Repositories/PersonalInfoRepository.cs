@@ -41,7 +41,8 @@ namespace ClaimBasedAuthentication.Persistence.Repositories
                     Address = vm.Address,
                     Gender = vm.Gender,
                     BloodGroup = vm.BloodGroup,
-                    DOB = Convert.ToDateTime(vm.DOB)
+                    DOB = Convert.ToDateTime(vm.DOB),
+                    PhotoUrl = photoUrl
                 };
                 await _db.PersonalInfo.AddAsync(model);
                 await _db.SaveChangesAsync();
