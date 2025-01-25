@@ -31,5 +31,12 @@ namespace ClaimBasedAuthentication.Controllers
             var claims = await _userRepository.GetAllClaimsAsync(roleId, currentUserRole);
             return Ok(claims);
         }
+        [Route("SaveClaims")]
+        [HttpPost]
+        public async Task<ActionResult> SaveClaims(VmSaveClaims vm)
+        {
+            await _userRepository.SaveClaimsAsync(vm);
+            return Ok();
+        }
     }
 }

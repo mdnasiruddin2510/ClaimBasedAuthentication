@@ -176,5 +176,26 @@ namespace ClaimBasedAuthentication.Persistence.Repositories
             }
             return claimGrid;
         }
+        public async Task SaveClaimsAsync(VmSaveClaims vm)
+        {
+            try
+            {
+                var role = await _roleManager.FindByIdAsync(vm.RoleId);
+                var allClaims = await _db.RoleClaims.Where(x => x.RoleId == vm.RoleId).ToListAsync();
+                //foreach (var item in allClaims)
+                //{
+                //	_db.Attach(item);
+                //}
+
+                _db.RoleClaims.RemoveRange(allClaims);
+                await _db.SaveChangesAsync();
+                foreach (var item in vm.Claims)
+                {
+                    await _roleManager.AddClaimAsync(role, new Claim(item, role.Id));
+                }
+            }
+            catch (Exception)
+            { }
+        }
     }
 }

@@ -13,5 +13,6 @@ namespace ClaimBasedAuthentication.Application.IRepository
         Task<AuthenticationResponse> Login(AuthenticationRequest request);
         Task<List<VmSelectListItem>> GetDrpRole();
         Task<VmClaimGrid> GetAllClaimsAsync(string roleId, string userRole);
+        Task SaveClaimsAsync(VmSaveClaims vm);
     }
 }
