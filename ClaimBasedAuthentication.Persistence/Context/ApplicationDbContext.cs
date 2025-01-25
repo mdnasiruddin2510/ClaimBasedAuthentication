@@ -16,7 +16,7 @@ namespace ClaimBasedAuthentication.Persistence.Context
         {
                 
         }
-
+        public DbSet<PersonalInfo> PersonalInfo { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
